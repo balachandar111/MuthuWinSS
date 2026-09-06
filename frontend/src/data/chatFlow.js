@@ -9,12 +9,14 @@
 //     B2C -> Main menu -> Cooking Instructions | Recipe Videos |
 //                          Place Order | Complaint | Contact Us
 //
-// NOTE FOR THE BRAND OWNER / DEV — placeholders that need your real content:
-//   - STEPS images: the Ramajeyam version uses the client's own step-by-step
-//     cooking photography. No equivalent Muthu WinSS photos were supplied,
-//     so every step below has NO `image`, which makes the UI fall back to
-//     the neutral rice-bag illustration. Add a real `image` URL per step
-//     once you have your own photography, exactly like Ramajeyam did.
+// NOTE FOR THE BRAND OWNER / DEV — placeholders that still need your input:
+//   - STEPS images: real Muthu WinSS step-by-step cooking photography has
+//     now been added (hosted on Cloudinary), so every step below shows its
+//     own photo instead of the generic rice-bag illustration. If a step's
+//     photo ever needs replacing, just swap the `image` URL for that step —
+//     no component changes needed (StepVisual in Chatbot.jsx already
+//     renders whatever `image` is present, and falls back to the
+//     illustration automatically if one is ever removed).
 //   - recipeVideo: only the YouTube CHANNEL link was provided
 //     (https://www.youtube.com/@muthuwinssrice). Paste the exact video URL
 //     here if there's one specific recipe video to show.
@@ -26,8 +28,9 @@
 //     Ramajeyam flow since Muthu WinSS's Blinkit listing confirms at least
 //     a Boiled Ponni Rice product. Confirm whether Idly Rice (and/or other
 //     varieties) should also be offered here.
-//   - Blinkit / Swiggy product images: no photo URLs were supplied, so
-//     product cards fall back to the rice-bag illustration.
+//   - Blinkit / Swiggy product images: both now use the same Muthu WinSS
+//     rice bag packshot (hosted on Cloudinary). Swap in per-listing photos
+//     later if you want each platform card to look distinct.
 // ---------------------------------------------------------------------------
 
 // Marketplace / redirect / social links
@@ -52,6 +55,8 @@ export const LINKS = {
 const CLOSING_HASHTAG = "@muthuwinssrice";
 
 // Per-platform product catalogues shown as cards once a platform is picked.
+// `image` is the real Muthu WinSS rice bag packshot (Cloudinary-hosted),
+// reused across both listings since only one product photo was supplied.
 export const PRODUCTS = {
   blinkit: {
     label: "Blinkit",
@@ -60,7 +65,8 @@ export const PRODUCTS = {
       {
         name: "Muthu Win SS Brand Rice - Boiled Ponni Rice (Medium Grain)",
         url: "https://blinkit.com/prn/muthu-win-ss-brand-rice-boiled-ponni-rice-medium-grain/prid/737929",
-        // TODO: add a real packshot URL here if available.
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788708973/Chatbot/Muthu%20Win%20SS/winricebag_ynmitd.jpg",
       },
     ],
   },
@@ -70,55 +76,71 @@ export const PRODUCTS = {
       {
         name: "Muthu Win SS Brand Rice",
         url: "https://instamart.in/item/W83R79JOWI",
-        // TODO: add a real packshot URL here if available.
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788708973/Chatbot/Muthu%20Win%20SS/winricebag_ynmitd.jpg",
       },
     ],
   },
 };
 
 // ---------------------------------------------------------------------------
-// Interactive step data. No client photography was supplied for Muthu
-// WinSS, so `image` is intentionally omitted on every step below — the UI
-// (StepVisual in Chatbot.jsx) falls back to a plain rice-bag illustration
-// automatically. Swap in real `image` URLs, one per step, once available.
-// The cooking technique text itself is generic rice-cooking know-how (not
-// brand-specific IP), so it's safe to reuse as a starting point — edit
-// freely to match Muthu WinSS's own recommended method if it differs.
+// Interactive step data. Every step now has its own real Muthu WinSS photo
+// (hosted on Cloudinary), so StepVisual (Chatbot.jsx) will render the actual
+// photo instead of the rice-bag illustration fallback. The cooking
+// technique text itself is generic rice-cooking know-how (not brand-
+// specific IP), so it's safe to reuse as a starting point — edit freely to
+// match Muthu WinSS's own recommended method if it differs.
 // ---------------------------------------------------------------------------
 export const STEPS = {
   ponniCooker: {
     english: [
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428631/Chatbot/step_01_jmlwnj.png",
         title: "Wash & Soak",
         desc: "Wash 1 cup of rice 2–3 times until the water runs clear, then soak for 20 minutes before cooking.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428630/Chatbot/step_02_qusyhg.png",
         title: "Add to Cooker",
         desc: "Add 1 cup soaked rice and 2 to 2.5 cups water into the pressure cooker.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428630/Chatbot/step_03_ji8eqf.png",
         title: "Cook 3 Whistles & Release",
         desc: "Close the lid with the weight on and cook on medium-high heat for 3 whistles. Turn off the heat and let the pressure release naturally for 10–15 minutes.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428631/Chatbot/step_04_o22ghx.png",
         title: "Fluff & Serve",
         desc: "Open the lid and fluff the rice gently with a fork.",
       },
     ],
     tamil: [
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428631/Chatbot/step_01_jmlwnj.png",
         title: "கழுவி ஊறவைக்கவும்",
         desc: "1 கப் அரிசியை 2-3 முறை தண்ணீர் தெளிவாகும் வரை கழுவி, சமைப்பதற்கு முன் 20 நிமிடங்கள் ஊறவைக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428630/Chatbot/step_02_qusyhg.png",
         title: "குக்கரில் சேர்க்கவும்",
         desc: "குக்கரில் 1 கப் ஊறவைத்த அரிசிக்கு 2 முதல் 2.5 கப் தண்ணீர் சேர்க்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428630/Chatbot/step_03_ji8eqf.png",
         title: "3 விசில் விட்டு பிரஷர் குறையவும்",
         desc: "குக்கர் மூடி மற்றும் விசில் போட்டு, மிதமான தீயில் 3 விசில் விடவும். அடுப்பை அணைத்து, தானாகவே பிரஷர் குறையும் வரை 10–15 நிமிடங்கள் காத்திருக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788428631/Chatbot/step_04_o22ghx.png",
         title: "கிளறி பரிமாறவும்",
         desc: "மூடியைத் திறந்து, கரண்டியால் லேசாகக் கிளறி பரிமாறவும்.",
       },
@@ -127,44 +149,64 @@ export const STEPS = {
   ponniPotSteam: {
     english: [
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429616/Chatbot/step_05_1_ziovfb.png",
         title: "Wash & Soak",
         desc: "Wash 1 cup of rice 2–3 times until the water runs clear, then soak for 20 minutes before cooking.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429616/Chatbot/step_06_2_pcdzio.png",
         title: "Boil Water",
         desc: "Boil 4 to 5 cups of water in a wide vessel.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429617/Chatbot/step_07_1_iyvgr2.png",
         title: "Add Rice & Cook Uncovered",
         desc: "Add the soaked rice to the boiling water and cook uncovered on medium-high heat for 18–25 minutes until the grains are soft.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429616/Chatbot/step_08_1_r1bupt.png",
         title: "Drain",
         desc: "Turn off the heat and drain the excess starch water using a colander or vessel lid.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429615/Chatbot/step_09_1_bc4cyt.png",
         title: "Rest & Serve",
         desc: "Cover with a lid and let it rest for 5 minutes before serving.",
       },
     ],
     tamil: [
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429616/Chatbot/step_05_1_ziovfb.png",
         title: "கழுவி ஊறவைக்கவும்",
         desc: "1 கப் அரிசியை 2-3 முறை தண்ணீர் தெளிவாகும் வரை கழுவி, சமைப்பதற்கு முன் 20 நிமிடங்கள் ஊறவைக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429616/Chatbot/step_06_2_pcdzio.png",
         title: "தண்ணீர் கொதிக்க வையுங்கள்",
         desc: "ஒரு அகலமான பாத்திரத்தில் 4 முதல் 5 கப் தண்ணீர் ஊற்றி கொதிக்க வைக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429617/Chatbot/step_07_1_iyvgr2.png",
         title: "அரிசியைச் சேர்த்து மூடாமல் வேகவைக்கவும்",
         desc: "கொதிக்கும் தண்ணீரில் ஊறவைத்த அரிசியைச் சேர்த்து, மிதமான தீயில் 18–25 நிமிடங்கள் அரிசி நன்கு வேகும் வரை மூடாமல் கொதிக்க விடவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429616/Chatbot/step_08_1_r1bupt.png",
         title: "வடிகட்டவும்",
         desc: "சாதம் வெந்ததும், தட்டை வைத்து கஞ்சியை வடிகட்டவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429615/Chatbot/step_09_1_bc4cyt.png",
         title: "மூடி வைத்து பரிமாறவும்",
         desc: "பாத்திரத்தை மூடி 5 நிமிடங்கள் கழித்து பரிமாறவும்.",
       },
@@ -173,60 +215,88 @@ export const STEPS = {
   idlyRice: {
     english: [
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429894/Chatbot/step_10_1_dv9qo3.png",
         title: "Ingredients (4:1 Ratio)",
         desc: "Idli rice 4 cups, whole urad dal 1 cup, fenugreek seeds 1 tsp, rock salt 1.5–2 tsp.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429892/Chatbot/step_11_1_jrbus6.png",
         title: "Wash & Soak Rice",
         desc: "Wash the idli rice 2–3 times until the water is clear, then soak for 4 to 5 hours.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435120/Chatbot/step_03_1_cbeo0s.png",
         title: "Soak Dal & Fenugreek",
         desc: "Wash urad dal and fenugreek seeds together and soak separately for 4 to 5 hours.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435356/Chatbot/step_04_2_xqjqo7.png",
         title: "Grind",
         desc: "Grind the urad dal first with ice-cold water for 20–25 minutes until fluffy, then grind the rice to a coarse, semolina-like texture.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435357/Chatbot/step_05_2_ffco9b.png",
         title: "Mix by Hand",
         desc: "Add rock salt and mix the rice and dal batters thoroughly by hand for 2–3 minutes. Keep the vessel only half full.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435356/Chatbot/step_06_4_tbkcke.png",
         title: "Ferment",
         desc: "Cover and let the batter ferment in a warm place for 8 to 12 hours.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435357/Chatbot/step_07_3_ysnh1l.png",
         title: "Steam Idlis or Make Dosas",
         desc: "Days 1–2: gently fold the batter and steam in idli plates for 10–12 minutes. Day 3+: thin the batter with a little water and spread it on a hot tawa for crispy dosas.",
       },
     ],
     tamil: [
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429894/Chatbot/step_10_1_dv9qo3.png",
         title: "பொருட்கள் (4:1 அளவு)",
         desc: "இட்லி அரிசி 4 கப், முழு உளுந்தம்பருப்பு 1 கப், வெந்தயம் 1 தேக்கரண்டி, கல் உப்பு 1.5–2 தேக்கரண்டி.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788429892/Chatbot/step_11_1_jrbus6.png",
         title: "அரிசியைக் கழுவி ஊறவைக்கவும்",
         desc: "இட்லி அரிசியை 2-3 முறை தண்ணீர் தெளிவாகும் வரை கழுவி, 4 முதல் 5 மணி நேரம் ஊறவைக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435120/Chatbot/step_03_1_cbeo0s.png",
         title: "பருப்பு & வெந்தயம் ஊறவைக்கவும்",
         desc: "உளுந்தம்பருப்பு மற்றும் வெந்தயத்தை ஒன்றாகக் கழுவி, தனி பாத்திரத்தில் 4 முதல் 5 மணி நேரம் ஊறவைக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435356/Chatbot/step_04_2_xqjqo7.png",
         title: "அரைக்கவும்",
         desc: "முதலில் உளுந்தை ஜில்லென்ற தண்ணீருடன் 20-25 நிமிடங்கள் மிருதுவாக அரைத்து, பின் அரிசியை கொரகொரப்பாக அரைக்கவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435357/Chatbot/step_05_2_ffco9b.png",
         title: "கையால் கலக்கவும்",
         desc: "கல் உப்பு சேர்த்து, சுத்தமான கைகளால் 2-3 நிமிடங்கள் நன்றாக கலக்கவும். பாத்திரத்தில் பாதி அளவு மட்டுமே மாவு இருக்க வேண்டும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435356/Chatbot/step_06_4_tbkcke.png",
         title: "புளிக்க வைக்கவும்",
         desc: "மூடி, வெதுவெதுப்பான இடத்தில் 8 முதல் 12 மணி நேரம் புளிக்க விடவும்.",
       },
       {
+        image:
+          "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788435357/Chatbot/step_07_3_ysnh1l.png",
         title: "இட்லி வேகவைக்கவும் அல்லது தோசை சுடவும்",
         desc: "1-2 நாட்கள்: மாவை லேசாகக் கிளறி, இட்லி தட்டில் ஊற்றி 10-12 நிமிடங்கள் வேகவைக்கவும். 3 நாட்களுக்குப் பிறகு: சிறிது தண்ணீர் சேர்த்து மாவை தளரக் கரைத்து, தோசைக் கல்லில் ஊற்றி சுடவும்.",
       },
