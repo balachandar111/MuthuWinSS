@@ -1,0 +1,31 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  background: #fdfaf3;
+  color: #2a2a2a;
+  overflow: hidden;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 60px 24px;
+}
+
+.page-header h1 {
+  color: #1f7a3d;
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  color: #555;
+} 
