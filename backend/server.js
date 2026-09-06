@@ -24,6 +24,13 @@ const isDev = (process.env.NODE_ENV || "development") !== "production";
 // ever allowed the exact string "http://localhost:5173".
 const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
 
+// Vercel gives every branch/PR its own preview URL
+// (e.g. muthu-win-ss-git-feature-x-yourname.vercel.app), which won't match
+// a fixed CLIENT_ORIGIN string. This allows any preview build of THIS
+// project specifically (prefix "muthu-win-ss") without opening CORS up to
+// unrelated *.vercel.app apps.
+const vercelPreviewRegex = /^https:\/\/muthu-win-ss[a-z0-9-]*\.vercel\.app$/;
+
 app.use(
   cors({
     origin(origin, callback) {
@@ -33,6 +40,8 @@ app.use(
       if (allowedOrigins.includes(origin)) return callback(null, true);
 
       if (isDev && localhostRegex.test(origin)) return callback(null, true);
+
+      if (vercelPreviewRegex.test(origin)) return callback(null, true);
 
       console.warn(`Blocked by CORS: ${origin}`);
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
