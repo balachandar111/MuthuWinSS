@@ -10,13 +10,11 @@ const BRAND_LOGO =
   "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788588929/Chatbot/Muthu%20Win%20SS/winssLOGO_dycgke.png";
 
 // Ambient background video played on loop behind the whole chat window.
-// Muted + loop + controls=0 keeps it purely decorative; pointer-events are
-// disabled on the iframe so it never intercepts taps/clicks.
-const BACKGROUND_VIDEO_ID = "26v5xPLIbKY";
+// Muted + loop + no controls keeps it purely decorative; pointer-events are
+// disabled on the <video> so it never intercepts taps/clicks.
 const BACKGROUND_VIDEO_SRC =
-  `https://www.youtube.com/embed/${BACKGROUND_VIDEO_ID}` +
-  `?autoplay=1&mute=1&loop=1&playlist=${BACKGROUND_VIDEO_ID}` +
-  `&controls=0&showinfo=0&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
+  "https://res.cloudinary.com/ds4i8pujs/video/upload/v1788769155/Chatbot/Muthu%20Win%20SS/vidssave.com_Kangeyam_Muthu_Win_SS_Brand_Rice___TVC_-40_Sec_480P_frlel4.mp4";
+
 
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_ATTACHMENT_TYPES = [
@@ -146,18 +144,21 @@ function TypingBubble() {
 function BackgroundVideo() {
   return (
     <div className="mws-bg-video-wrap" aria-hidden="true">
-      <iframe
+      <video
         className="mws-bg-video-iframe"
         src={BACKGROUND_VIDEO_SRC}
-        title="Muthu WinSS background video"
-        frameBorder="0"
-        allow="autoplay; encrypted-media; picture-in-picture"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
         tabIndex={-1}
       />
       <div className="mws-bg-video-overlay" />
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // MUTHU WINSS AI VOICE
