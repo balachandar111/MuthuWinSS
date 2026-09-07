@@ -718,26 +718,18 @@ export default function Chatbot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  // Nodes shown before the customer has picked a language. The AI voice
-  // stays silent through all of these — including the "Please choose your
-  // language" prompt itself, since at that point we don't yet know which
-  // language to speak it in — and only starts talking from the very next
-  // message onward (e.g. the Tamil business-type question, once "Tamil" is
-  // tapped).
-  const PRE_LANGUAGE_NODES = new Set([START_NODE, "check_originality", "language"]);
-
   // Speak the newest bot message aloud, once, as soon as it lands.
-  // Skipped for every pre-language-selection screen (see
-  // PRE_LANGUAGE_NODES above) — the AI voice should only start once a
-  // language has actually been chosen. Also skipped for "steps" nodes —
-  // their content is narrated step-by-step by the effect below instead of
-  // reading the generic intro line.
+  // Skipped for the very first "welcome" screen ("Thank you for visiting
+  // Muthu WinSS Rice 🌾") — the AI voice should only start from the next
+  // message onward ("Please choose your language"). Also skipped for
+  // "steps" nodes — their content is narrated step-by-step by the effect
+  // below instead of reading the generic intro line.
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.sender !== "bot") return;
     if (spokenIds.current.has(last.id)) return;
     spokenIds.current.add(last.id);
-    if (PRE_LANGUAGE_NODES.has(currentNodeId)) return;
+    if (currentNodeId === START_NODE) return;
     const node = FLOW[currentNodeId];
     if (node?.type === "steps") return;
     voice.speak(last.text);
