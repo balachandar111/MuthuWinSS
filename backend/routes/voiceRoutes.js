@@ -8,6 +8,13 @@
 //                Polly has no Tamil voice at all)
 // You'll need to add real AWS credentials to backend/.env for the English
 // voice to work (see the .env comments). Tamil works with no setup at all.
+//
+// VOLUME: the English voice is now synthesized as SSML with a
+// <prosody volume="..."> boost (see VOICE_VOLUME_DB / synthesizeEnglish
+// below), so it comes back louder at the source. Google Translate's free
+// TTS endpoint used for Tamil has no volume/SSML controls, so a matching
+// boost for Tamil (and an extra boost on top of this one for English) is
+// applied client-side instead, via a Web Audio GainNode in Chatbot.jsx.
 // ---------------------------------------------------------------------------
 
 const express = require("express");
@@ -30,6 +37,22 @@ const pollyClient = new PollyClient({
 
 const MAX_TEXT_LENGTH = 1500;
 
+// How much louder than Polly's default level the English voice is
+// synthesized. Amazon Polly's neural engine supports the SSML <prosody
+// volume="+XdB"> tag; keep this modest (a handful of dB) since pushing it
+// too high risks audible clipping/distortion in the source audio itself.
+const VOICE_VOLUME_DB = "+6dB";
+
+// Escapes text for safe embedding inside an SSML <speak> document.
+function escapeSsml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 // Streams an AWS SDK v3 Readable/Blob-like body into a single Buffer.
 async function streamToBuffer(body) {
   if (Buffer.isBuffer(body)) return body;
@@ -45,8 +68,14 @@ async function streamToBuffer(body) {
 }
 
 async function synthesizeEnglish(text) {
+  // Wrapping in <prosody volume="+6dB"> raises the loudness of the
+  // synthesized audio itself, on top of the client-side GainNode boost
+  // applied during playback in Chatbot.jsx.
+  const ssml = `<speak><prosody volume="${VOICE_VOLUME_DB}">${escapeSsml(text)}</prosody></speak>`;
+
   const command = new SynthesizeSpeechCommand({
-    Text: text,
+    Text: ssml,
+    TextType: "ssml",
     OutputFormat: "mp3",
     VoiceId: "Kajal",
     Engine: "neural",
@@ -60,7 +89,9 @@ async function synthesizeEnglish(text) {
 // is an undocumented, unofficial endpoint intended for translate.google.com
 // itself — treat it as a free best-effort fallback, not a guaranteed SLA.
 // Text is capped and chunked because this endpoint silently truncates long
-// inputs (~200 characters per request).
+// inputs (~200 characters per request). It has no volume/SSML controls, so
+// this voice relies entirely on the client-side GainNode boost in
+// Chatbot.jsx for extra loudness.
 async function synthesizeTamil(text) {
   const chunks = text.match(/.{1,180}(?:\s|$)/g) || [text];
   const buffers = [];

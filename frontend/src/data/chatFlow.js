@@ -326,6 +326,14 @@ export const STRINGS = {
     menuComplaint: "Complaint",
     menuContactUs: "Contact Us",
 
+    // Originality check
+    originalityIntro: "Let's make sure you have the real thing 🌾",
+    originalityBadge: "100% Genuine",
+    originalityTitle: "Muthu WinSS Original Rice Bag",
+    originalityDescription:
+      "This is our original packaging. Muthu WinSS Rice is 100% genuine — always check for this exact bag and branding before you buy, to make sure you're getting our authentic product.",
+    originalityContinue: "Continue",
+
     // Cooking instructions
     riceTypePrompt: "Please choose the rice type:",
     riceTypePonni: "Ponni Rice",
@@ -411,6 +419,13 @@ export const STRINGS = {
     menuComplaint: "புகார்",
     menuContactUs: "தொடர்பு கொள்ள",
 
+    originalityIntro: "இது நிஜமான பொருளா என்று உறுதிசெய்வோம் 🌾",
+    originalityBadge: "100% மெய்யான பொருள்",
+    originalityTitle: "முத்து வின்எஸ்எஸ் மூல அரிசி பை",
+    originalityDescription:
+      "இதுவே எங்கள் மூலப் பொதியாகும். முத்து வின்எஸ்எஸ் அரிசி 100% மெய்யானது — வாங்குமுன் இந்த பை மற்றும் பிராண்டிங்கை சரிபார்த்து, உண்மையான பொருளைப் பெறுவதை உறுதிசெய்யுங்கள்.",
+    originalityContinue: "தொடரவும்",
+
     riceTypePrompt: "அரிசி வகையைத் தேர்ந்தெடுக்கவும்:",
     riceTypePonni: "பொன்னி அரிசி",
     riceTypeIdly: "இட்லி அரிசி",
@@ -482,7 +497,30 @@ export const FLOW = {
   welcome: {
     type: "options",
     text: (t) => t.welcome,
-    options: [{ label: "Continue / தொடரவும்", next: "language" }],
+    options: [
+      { label: "Continue / தொடரவும்", next: "language" },
+      {
+        label: "Check Originality / மூலப்பொருள் சரிபார்க்க",
+        next: "check_originality",
+      },
+    ],
+  },
+
+  // ---------------------------------------------------------------------
+  // Originality check: shows the real Muthu WinSS packaging (same
+  // Cloudinary packshot used on the product cards) with a short genuine-
+  // product message, then continues into the normal language / menu flow.
+  // ---------------------------------------------------------------------
+  check_originality: {
+    type: "originality",
+    text: (t) => t.originalityIntro,
+    image:
+      "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788708973/Chatbot/Muthu%20Win%20SS/winricebag_ynmitd.jpg",
+    badgeKey: "originalityBadge",
+    titleKey: "originalityTitle",
+    descriptionKey: "originalityDescription",
+    continueKey: "originalityContinue",
+    next: "language",
   },
 
   language: {

@@ -9,6 +9,15 @@ const API_BASE_URL =
 const BRAND_LOGO =
   "https://res.cloudinary.com/ds4i8pujs/image/upload/v1788588929/Chatbot/Muthu%20Win%20SS/winssLOGO_dycgke.png";
 
+// Ambient background video played on loop behind the whole chat window.
+// Muted + loop + controls=0 keeps it purely decorative; pointer-events are
+// disabled on the iframe so it never intercepts taps/clicks.
+const BACKGROUND_VIDEO_ID = "26v5xPLIbKY";
+const BACKGROUND_VIDEO_SRC =
+  `https://www.youtube.com/embed/${BACKGROUND_VIDEO_ID}` +
+  `?autoplay=1&mute=1&loop=1&playlist=${BACKGROUND_VIDEO_ID}` +
+  `&controls=0&showinfo=0&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
+
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_ATTACHMENT_TYPES = [
   "image/jpeg",
@@ -17,6 +26,18 @@ const ALLOWED_ATTACHMENT_TYPES = [
   "image/gif",
   "application/pdf",
 ];
+
+// ---------------------------------------------------------------------------
+// VOICE VOLUME BOOST
+// Both <audio>.volume and SpeechSynthesisUtterance.volume are hard-capped by
+// browsers at 1.0 ("normal max") — there's no built-in way to go louder.
+// To make the AI voice genuinely louder (not just "as loud as it can be
+// without a boost"), backend-synthesized audio (Polly English / Google
+// Translate Tamil) is routed through a Web Audio API GainNode set above 1.0
+// — see getAudioGraph()/speak() below. Tweak this value to taste:
+//   1.0 = no change, 1.5–2.0 = noticeably louder, higher risks clipping.
+// ---------------------------------------------------------------------------
+const VOICE_VOLUME_BOOST = 1.8;
 
 // A field with a `showIf` condition is only shown (and only submitted) when
 // the referenced field currently holds the expected value. Used to power
@@ -88,7 +109,7 @@ function RiceBagIllustration({ className }) {
         strokeWidth="2.5"
         strokeLinecap="round"
       />
-      <line x1="44" y1="44" x2="76" y2="44" stroke="rgba(107,66,38,0.25)" strokeWidth="2" />
+      <line x1="44" y1="44" x2="76" y2="44" stroke="rgba(20,20,20,0.2)" strokeWidth="2" />
       <ellipse cx="52" cy="66" rx="4.5" ry="7" fill="var(--mws-paddy)" opacity="0.85" transform="rotate(-18 52 66)" />
       <ellipse cx="64" cy="72" rx="4.5" ry="7" fill="var(--mws-paddy-deep)" opacity="0.85" transform="rotate(10 64 72)" />
       <ellipse cx="72" cy="58" rx="4.5" ry="7" fill="var(--mws-paddy)" opacity="0.85" transform="rotate(-32 72 58)" />
@@ -118,6 +139,26 @@ function TypingBubble() {
   );
 }
 
+// Purely decorative, looping background video shown behind the whole chat
+// window (header excluded, since the header paints its own opaque
+// background over it). Muted + looped + no controls + pointer-events:none
+// so it never grabs focus, sound, or taps.
+function BackgroundVideo() {
+  return (
+    <div className="mws-bg-video-wrap" aria-hidden="true">
+      <iframe
+        className="mws-bg-video-iframe"
+        src={BACKGROUND_VIDEO_SRC}
+        title="Muthu WinSS background video"
+        frameBorder="0"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        tabIndex={-1}
+      />
+      <div className="mws-bg-video-overlay" />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // MUTHU WINSS AI VOICE
 // Reads each bot message aloud in the customer's chosen language.
@@ -127,7 +168,8 @@ function TypingBubble() {
 // streams back an MP3. Nothing third-party ever loads in the browser (no
 // sign-in popups) and no API keys reach the client.
 //   - English -> Amazon Polly's "Kajal" voice (Indian-English, neural),
-//     using your AWS account.
+//     using your AWS account. Now synthesized with an SSML volume boost
+//     server-side too (see voiceRoutes.js).
 //   - Tamil -> Google's free public Translate TTS voice ("ta"). Amazon
 //     Polly has no Tamil voice at all, and this endpoint needs no API key
 //     or account, so it's a genuinely free AI voice for Tamil that keeps
@@ -136,12 +178,19 @@ function TypingBubble() {
 //     button" than premium neural TTS, but it's real Tamil speech, not a
 //     robotic browser fallback, and it costs nothing to run.
 //
+// VOLUME: playback of the backend-synthesized audio is routed through a Web
+// Audio API GainNode (see getAudioGraph()/speak() below) set to
+// VOICE_VOLUME_BOOST, so the assistant plays louder than a plain <audio>
+// element's normal 0–1 volume ceiling would allow.
+//
 // Fallback path (only if the backend call itself fails — server down, no
 // network, etc.): the browser's built-in SpeechSynthesis API, tuned to
 // prefer an Indian/female voice for English, or an installed Tamil voice
 // for Tamil (best-effort — most desktop browsers/OSes don't ship one,
 // though Android/Chrome OS and many phones do). Lower quality, but the
-// assistant never goes completely silent.
+// assistant never goes completely silent. Note: the Web Speech API has no
+// gain/boost mechanism, so this fallback path stays at its normal max
+// volume (1.0) even though the primary path is boosted.
 //
 // NOTE: backend/routes/voiceRoutes.js was written from scratch for this
 // project (the original wasn't supplied) — see the TODOs there for the AWS
@@ -152,10 +201,56 @@ function useMuthuWinssVoice(language) {
   const [enabled, setEnabled] = useState(true);
   const [speaking, setSpeaking] = useState(false);
 
+  // ---------------------------------------------------------------------
+  // SEQUENTIAL SPEECH QUEUE
+  // Bot messages can land back-to-back (e.g. clicking "Continue" shows a
+  // reply AND immediately advances to the next question). Earlier this
+  // component tried to "interrupt and play newest" on every speak() call,
+  // which relied on async fetches/timers all resolving in the right order —
+  // any race there let two messages talk over each other. Instead, every
+  // speak() call now just pushes text onto `queueRef` and a single runner
+  // (`advanceQueue`) plays one item fully to completion before starting the
+  // next, so overlapping audio is impossible by construction, not by luck.
+  // ---------------------------------------------------------------------
+  const queueRef = useRef([]);
+  const busyRef = useRef(false);
+
+  // ---------------------------------------------------------------------
+  // AUTOPLAY UNLOCK
+  // Every modern browser blocks audio with sound from playing until the
+  // *user* has interacted with the page at least once — there's no way
+  // around this from JS, so the very first bot message (spoken the
+  // instant the chat opens on page load) will usually be blocked. Instead
+  // of failing silently, we detect that block, leave the message at the
+  // front of the queue, and pause the queue (`needsUnlockRef`) until the
+  // user's first tap/click/keypress anywhere on the page arrives — at
+  // which point we simply resume the queue from where it left off.
+  // `needsUnlock` (state) drives a small "tap to enable voice" hint in the
+  // UI; `needsUnlockRef` is the synchronous source of truth used inside
+  // the queue runner so it never acts on a stale value.
+  // ---------------------------------------------------------------------
+  const [needsUnlock, setNeedsUnlock] = useState(false);
+  const needsUnlockRef = useRef(false);
+  const setUnlockState = (value) => {
+    needsUnlockRef.current = value;
+    setNeedsUnlock(value);
+  };
+
   const voicesRef = useRef([]);
   const audioRef = useRef(null);
   const audioUrlRef = useRef(null);
   const requestIdRef = useRef(0);
+
+  // Shared Web Audio API graph used to boost backend-synthesized playback
+  // above the browser's normal 0–1 volume ceiling. Created lazily (first
+  // speak() call) and reused across messages rather than rebuilt each time.
+  const audioContextRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+
+  // Pending setTimeout id from the Chrome cancel()->speak() workaround
+  // delay inside tryBrowserFallback (see below).
+  const browserTimeoutRef = useRef(null);
 
   const browserSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
@@ -217,57 +312,6 @@ function useMuthuWinssVoice(language) {
       .replace(/\s+/g, " ")
       .trim();
 
-  const speakWithBrowser = (text) => {
-    if (!browserSupported || !text) return;
-
-    try {
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      const { voice, matchedLanguage } = pickBrowserVoice(language);
-
-      if (voice) {
-        utterance.voice = voice;
-        // Only force the requested lang tag when the voice actually speaks
-        // it. Forcing "ta-IN" onto a mismatched (usually English) voice
-        // makes Chrome silently drop the utterance instead of speaking it.
-        utterance.lang = matchedLanguage
-          ? voice.lang || (language === "tamil" ? "ta-IN" : "en-IN")
-          : voice.lang || "en-IN";
-
-        if (language === "tamil" && !matchedLanguage) {
-          console.warn(
-            "Muthu WinSS voice: no Tamil voice is installed on this browser/device — " +
-              "falling back to the default voice so the assistant still speaks. " +
-              "Install a Tamil text-to-speech voice in your OS/browser settings for Tamil audio."
-          );
-        }
-      } else {
-        utterance.lang = language === "tamil" ? "ta-IN" : "en-IN";
-      }
-
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1;
-
-      utterance.onstart = () => setSpeaking(true);
-      utterance.onend = () => setSpeaking(false);
-      utterance.onerror = (e) => {
-        console.error("Browser TTS error:", e?.error || e);
-        setSpeaking(false);
-      };
-
-      // Chrome has a known bug where calling speak() in the same tick as a
-      // preceding cancel() silently drops the utterance. A tiny delay avoids it.
-      setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-      }, 40);
-    } catch (error) {
-      console.error("Browser TTS error:", error);
-      setSpeaking(false);
-    }
-  };
-
   // Chrome bug (still present in recent versions): any utterance running
   // longer than ~15s gets silently cut off unless the synth is periodically
   // paused/resumed. Longer cooking-step replies can exceed that, especially
@@ -284,6 +328,36 @@ function useMuthuWinssVoice(language) {
     return () => clearInterval(keepAlive);
   }, [browserSupported]);
 
+  // Lazily creates (once) and returns the shared AudioContext + GainNode
+  // used to push backend-synthesized playback above the browser's normal
+  // 0–1 volume ceiling. Returns null if Web Audio isn't available, in
+  // which case callers should just fall back to normal <audio> volume.
+  const getAudioGraph = () => {
+    const AudioContextClass =
+      typeof window !== "undefined" &&
+      (window.AudioContext || window.webkitAudioContext);
+    if (!AudioContextClass) return null;
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass();
+      gainNodeRef.current = audioContextRef.current.createGain();
+      gainNodeRef.current.gain.value = VOICE_VOLUME_BOOST;
+      gainNodeRef.current.connect(audioContextRef.current.destination);
+    }
+    return { context: audioContextRef.current, gain: gainNodeRef.current };
+  };
+
+  // Cancels the Web Speech API fallback and any pending delayed speak()
+  // call from tryBrowserFallback, so a stale utterance can never fire after
+  // playback has already been stopped/superseded.
+  const cancelBrowserSpeech = () => {
+    if (browserTimeoutRef.current) {
+      clearTimeout(browserTimeoutRef.current);
+      browserTimeoutRef.current = null;
+    }
+    if (browserSupported) window.speechSynthesis.cancel();
+  };
+
   const stopAudioElement = () => {
     const audio = audioRef.current;
     if (audio) {
@@ -299,6 +373,15 @@ function useMuthuWinssVoice(language) {
     }
     audioRef.current = null;
 
+    if (sourceNodeRef.current) {
+      try {
+        sourceNodeRef.current.disconnect();
+      } catch {
+        // Ignore graph cleanup errors
+      }
+      sourceNodeRef.current = null;
+    }
+
     if (audioUrlRef.current) {
       try {
         URL.revokeObjectURL(audioUrlRef.current);
@@ -309,74 +392,235 @@ function useMuthuWinssVoice(language) {
     }
   };
 
-  const speak = async (text) => {
-    if (!enabled || !text) return;
-
-    const clean = cleanText(text);
-    if (!clean) return;
-
-    const currentRequestId = ++requestIdRef.current;
-
-    window.speechSynthesis?.cancel();
-    stopAudioElement();
-
-    try {
+  // Plays exactly one piece of text to completion (backend audio, falling
+  // back to the browser's built-in voice), and resolves once it's fully
+  // done — successfully, on error, or because playback got blocked and was
+  // handed back to the queue. advanceQueue() never starts a second item
+  // until this promise resolves, which is what guarantees no overlap.
+  const playOne = (text) =>
+    new Promise((resolve) => {
+      const currentRequestId = ++requestIdRef.current;
       setSpeaking(true);
 
-      // language is "english" or "tamil" — the backend picks the right
-      // free AI voice for each (Polly Kajal / Google Translate TTS ta).
-      const response = await fetch(`${API_BASE_URL}/voice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: clean, language }),
-      });
-
-      // A newer request replaced this request while we were waiting
-      if (currentRequestId !== requestIdRef.current) return;
-
-      if (!response.ok) {
-        throw new Error(`Voice backend responded with ${response.status}`);
-      }
-
-      const blob = await response.blob();
-
-      // Superseded again while the blob was downloading
-      if (currentRequestId !== requestIdRef.current) return;
-
-      const url = URL.createObjectURL(blob);
-      audioUrlRef.current = url;
-
-      const audio = new Audio(url);
-      audioRef.current = audio;
-
-      audio.onplay = () => setSpeaking(true);
-      audio.onended = () => {
+      const finish = () => {
         setSpeaking(false);
-        stopAudioElement();
+        resolve();
       };
-      audio.onerror = (error) => {
-        console.error("Muthu WinSS voice audio playback error:", error);
-        setSpeaking(false);
-        if (currentRequestId === requestIdRef.current) {
-          speakWithBrowser(clean);
+
+      // Marks this text as blocked by the browser's autoplay policy: put
+      // it back at the front of the queue (so it's the next thing spoken,
+      // not lost) and pause the queue until the user interacts.
+      const blockedByAutoplay = () => {
+        queueRef.current.unshift(text);
+        setUnlockState(true);
+        finish();
+      };
+
+      const tryBrowserFallback = () => {
+        if (currentRequestId !== requestIdRef.current) {
+          finish();
+          return;
+        }
+        if (!browserSupported) {
+          finish();
+          return;
+        }
+        try {
+          window.speechSynthesis.cancel();
+          if (browserTimeoutRef.current) {
+            clearTimeout(browserTimeoutRef.current);
+            browserTimeoutRef.current = null;
+          }
+
+          const utterance = new SpeechSynthesisUtterance(text);
+          const { voice, matchedLanguage } = pickBrowserVoice(language);
+
+          if (voice) {
+            utterance.voice = voice;
+            // Only force the requested lang tag when the voice actually
+            // speaks it. Forcing "ta-IN" onto a mismatched (usually
+            // English) voice makes Chrome silently drop the utterance.
+            utterance.lang = matchedLanguage
+              ? voice.lang || (language === "tamil" ? "ta-IN" : "en-IN")
+              : voice.lang || "en-IN";
+
+            if (language === "tamil" && !matchedLanguage) {
+              console.warn(
+                "Muthu WinSS voice: no Tamil voice is installed on this browser/device — " +
+                  "falling back to the default voice so the assistant still speaks. " +
+                  "Install a Tamil text-to-speech voice in your OS/browser settings for Tamil audio."
+              );
+            }
+          } else {
+            utterance.lang = language === "tamil" ? "ta-IN" : "en-IN";
+          }
+
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          // Web Speech API caps volume at 1.0 (its max) — no way to boost
+          // this fallback path louder than "normal max" client-side.
+          utterance.volume = 1;
+
+          utterance.onstart = () => {
+            setSpeaking(true);
+            // We actually got sound out, so the browser allowed it.
+            setUnlockState(false);
+          };
+          utterance.onend = () => finish();
+          utterance.onerror = (e) => {
+            console.error("Browser TTS error:", e?.error || e);
+            // Chrome/Edge/Safari report this reason when speech was
+            // blocked for lack of a user gesture (notably iOS Safari).
+            if (e?.error === "not-allowed") {
+              blockedByAutoplay();
+              return;
+            }
+            finish();
+          };
+
+          // Chrome has a known bug where calling speak() in the same tick
+          // as a preceding cancel() silently drops the utterance. A tiny
+          // delay avoids it.
+          browserTimeoutRef.current = setTimeout(() => {
+            browserTimeoutRef.current = null;
+            if (currentRequestId !== requestIdRef.current) {
+              finish();
+              return;
+            }
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+          }, 40);
+        } catch (error) {
+          console.error("Browser TTS error:", error);
+          finish();
         }
       };
 
-      await audio.play();
-    } catch (error) {
-      console.error("Muthu WinSS backend TTS error:", error);
-      if (currentRequestId !== requestIdRef.current) return;
-      setSpeaking(false);
-      // Always keep the assistant speaking, even if the backend/voice
-      // provider is unreachable (server down, no network, etc.)
-      speakWithBrowser(clean);
-    }
+      (async () => {
+        try {
+          // language is "english" or "tamil" — the backend picks the
+          // right free AI voice for each (Polly Kajal / Google Translate
+          // TTS ta).
+          const response = await fetch(`${API_BASE_URL}/voice`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, language }),
+          });
+
+          if (currentRequestId !== requestIdRef.current) {
+            finish();
+            return;
+          }
+          if (!response.ok) {
+            throw new Error(`Voice backend responded with ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          if (currentRequestId !== requestIdRef.current) {
+            finish();
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          audioUrlRef.current = url;
+
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          audio.volume = 1; // source stays at normal max; the GainNode below does the boosting
+
+          // Route playback through a GainNode so it can be louder than a
+          // plain <audio> element's 0–1 ceiling allows — the free Google
+          // Translate Tamil voice in particular tends to come back
+          // quieter than Polly's English voice.
+          const graph = getAudioGraph();
+          if (graph) {
+            try {
+              if (graph.context.state === "suspended") {
+                await graph.context.resume();
+              }
+              const source = graph.context.createMediaElementSource(audio);
+              source.connect(graph.gain);
+              sourceNodeRef.current = source;
+            } catch (graphError) {
+              console.error(
+                "Muthu WinSS voice: volume boost unavailable, playing at normal volume.",
+                graphError
+              );
+            }
+          }
+
+          audio.onplay = () => setSpeaking(true);
+          audio.onended = () => {
+            stopAudioElement();
+            finish();
+          };
+          audio.onerror = (error) => {
+            console.error("Muthu WinSS voice audio playback error:", error);
+            stopAudioElement();
+            tryBrowserFallback();
+          };
+
+          await audio.play();
+          // Playback actually started, so the browser allowed it.
+          setUnlockState(false);
+        } catch (error) {
+          console.error("Muthu WinSS backend TTS error:", error);
+          if (currentRequestId !== requestIdRef.current) {
+            finish();
+            return;
+          }
+
+          // "NotAllowedError" means the browser blocked this
+          // <audio>.play() call because it happened without a user
+          // gesture (e.g. the very first message spoken automatically on
+          // page load). Requeue and pause rather than trying the browser
+          // fallback, since browsers that gate <audio> this way usually
+          // gate speechSynthesis identically (notably iOS Safari).
+          if (error?.name === "NotAllowedError") {
+            blockedByAutoplay();
+            return;
+          }
+
+          // Any other failure (server down, no network, etc.) — try the
+          // browser's own voice instead of going silent.
+          tryBrowserFallback();
+        }
+      })();
+    });
+
+  // Pulls the next queued message and plays it, one at a time. Never
+  // starts a new item while one is already in flight (`busyRef`) or while
+  // paused waiting for an autoplay unlock (`needsUnlockRef`) — this is the
+  // whole mechanism that prevents two messages from ever sounding at once.
+  const advanceQueue = () => {
+    if (busyRef.current) return;
+    if (needsUnlockRef.current) return;
+
+    const next = queueRef.current.shift();
+    if (next === undefined) return;
+
+    busyRef.current = true;
+    playOne(next).then(() => {
+      busyRef.current = false;
+      advanceQueue();
+    });
+  };
+
+  const speak = (text) => {
+    if (!enabled || !text) return;
+    const clean = cleanText(text);
+    if (!clean) return;
+    queueRef.current.push(clean);
+    advanceQueue();
   };
 
   const stop = () => {
-    requestIdRef.current += 1;
+    requestIdRef.current += 1; // invalidate anything currently in flight
+    queueRef.current = [];
+    busyRef.current = false;
+    setUnlockState(false);
     stopAudioElement();
-    if (browserSupported) window.speechSynthesis.cancel();
+    cancelBrowserSpeech();
     setSpeaking(false);
   };
 
@@ -387,7 +631,50 @@ function useMuthuWinssVoice(language) {
     });
   };
 
-  return { supported: true, enabled, speaking, speak, stop, toggleEnabled };
+  // As soon as the user interacts with the page in ANY way (tap, click, or
+  // keypress — doesn't have to be on the voice button), resume the queue
+  // from wherever it paused. This is what makes the assistant feel like it
+  // "just starts talking" on page load even though browsers require a
+  // gesture first: the delay is usually imperceptible because the chat
+  // window opens front-and-center and the user's first tap almost always
+  // lands within it.
+  useEffect(() => {
+    if (!needsUnlock || !enabled) return;
+
+    const handleFirstInteraction = () => {
+      // Nudge the shared AudioContext awake — required by some browsers
+      // before any MediaElementSource-routed audio (our volume boost
+      // graph) will produce sound, even after the gesture happens.
+      const graph = getAudioGraph();
+      if (graph?.context.state === "suspended") {
+        graph.context.resume().catch(() => {});
+      }
+
+      setUnlockState(false);
+      advanceQueue();
+    };
+
+    const events = ["pointerdown", "touchstart", "keydown"];
+    events.forEach((evt) =>
+      document.addEventListener(evt, handleFirstInteraction, { once: true })
+    );
+    return () => {
+      events.forEach((evt) =>
+        document.removeEventListener(evt, handleFirstInteraction)
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsUnlock, enabled]);
+
+  return {
+    supported: true,
+    enabled,
+    speaking,
+    needsUnlock,
+    speak,
+    stop,
+    toggleEnabled,
+  };
 }
 
 export default function Chatbot() {
@@ -431,13 +718,17 @@ export default function Chatbot() {
   }, [messages, typing]);
 
   // Speak the newest bot message aloud, once, as soon as it lands.
-  // Skipped for "steps" nodes — their content is narrated step-by-step
-  // by the effect below instead of reading the generic intro line.
+  // Skipped for the very first "welcome" screen ("Thank you for visiting
+  // Muthu WinSS Rice 🌾") — the AI voice should only start from the next
+  // message onward ("Please choose your language"). Also skipped for
+  // "steps" nodes — their content is narrated step-by-step by the effect
+  // below instead of reading the generic intro line.
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.sender !== "bot") return;
     if (spokenIds.current.has(last.id)) return;
     spokenIds.current.add(last.id);
+    if (currentNodeId === START_NODE) return;
     const node = FLOW[currentNodeId];
     if (node?.type === "steps") return;
     voice.speak(last.text);
@@ -628,6 +919,8 @@ export default function Chatbot() {
 
   return (
     <div className="mws-chat-fullscreen" role="dialog" aria-modal="true">
+      <BackgroundVideo />
+
       <div className="mws-grain-field" aria-hidden="true">
         {Array.from({ length: 14 }).map((_, i) => (
           <GrainIcon key={i} className={`mws-grain-deco mws-grain-deco-${i}`} />
@@ -679,6 +972,12 @@ export default function Chatbot() {
           </button>
         </div>
       </div>
+
+      {voice.needsUnlock && voice.enabled && (
+        <div className="mws-voice-unlock-hint" role="status">
+          🔊 Tap anywhere to turn on the AI voice assistant
+        </div>
+      )}
 
       <div className="mws-chat-body">
         <div className="mws-chat-scroll">
@@ -748,6 +1047,29 @@ export default function Chatbot() {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {!typing && node?.type === "originality" && (
+            <div className="mws-originality-card">
+              <div className="mws-originality-media">
+                <img
+                  src={node.image}
+                  alt={t[node.titleKey]}
+                  className="mws-originality-photo"
+                />
+                <span className="mws-originality-badge">{t[node.badgeKey]}</span>
+              </div>
+              <div className="mws-originality-title">{t[node.titleKey]}</div>
+              <div className="mws-originality-desc">{t[node.descriptionKey]}</div>
+              <div className="mws-options">
+                <button
+                  className="mws-option-chip"
+                  onClick={() => setCurrentNodeId(node.next || "language")}
+                >
+                  {t[node.continueKey]}
+                </button>
+              </div>
             </div>
           )}
 

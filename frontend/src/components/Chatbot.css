@@ -1,33 +1,42 @@
 /* ---------------------------------------------------------------------
    Muthu WinSS Rice chatbot theme
-   Palette:
-     --mws-cream        milled rice / page background
-     --mws-paddy        primary green (paddy field)
+   Palette (matched to winssrice.com): white background, confident green
+   (nav CTA / WhatsApp-style green), a red accent from the "Since 1963"
+   shield, and gold for the rice-stalk decoration.
+     --mws-cream        page background (site is white)
+     --mws-paddy        primary green (site's CTA button green)
      --mws-paddy-deep   hover / pressed green
-     --mws-husk         harvested-husk gold accent
+     --mws-husk         gold accent (matches the rice-stalk graphic)
      --mws-husk-soft    pale gold tint
-     --mws-soil         soil brown, used for stitch lines & borders
-     --mws-ink          near-black green, body text
-     --mws-chili        error red
+     --mws-soil         near-black, used for stitch lines & subtle borders
+     --mws-ink          near-black, body text (matches the site's nav text)
+     --mws-chili        error red (matches the shield's red)
    Type:
-     Fraunces      display (header title, form title)
-     Public Sans   body (bubbles, buttons, labels)
-     IBM Plex Mono utility (badges, meta text)
+     Site-wide font family is Jost (sans-serif), used for everything —
+     headings, body copy, and small utility/badge text alike.
 --------------------------------------------------------------------- */
 
-:root {
-  --mws-cream: #faf6ec;
-  --mws-paddy: #2f6b3f;
-  --mws-paddy-deep: #1c4527;
-  --mws-husk: #d9a441;
-  --mws-husk-soft: #f3e3b8;
-  --mws-soil: #6b4226;
-  --mws-ink: #1c2a1e;
-  --mws-chili: #c1442d;
+@import url("https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap");
+/* For best performance, also add this to your HTML <head> instead of
+   relying on the @import above:
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+*/
 
-  --mws-font-display: "Fraunces", Georgia, serif;
-  --mws-font-body: "Public Sans", "Segoe UI", Roboto, sans-serif;
-  --mws-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+:root {
+  --mws-cream: #ffffff;
+  --mws-paddy: #16a34a;
+  --mws-paddy-deep: #0f7a37;
+  --mws-husk: #c99a2e;
+  --mws-husk-soft: #f6ecd2;
+  --mws-soil: #2b2b2b;
+  --mws-ink: #141414;
+  --mws-chili: #d32f2f;
+
+  --mws-font-display: "Jost", sans-serif;
+  --mws-font-body: "Jost", sans-serif;
+  --mws-font-mono: "Jost", sans-serif;
 }
 
 /* ---------------- Floating launcher (closed state) ---------------- */
@@ -48,7 +57,7 @@
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.1px;
-  box-shadow: 0 10px 26px rgba(28, 69, 39, 0.35);
+  box-shadow: 0 10px 26px rgba(22, 163, 74, 0.35);
   cursor: pointer;
   z-index: 1000;
   transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
@@ -56,7 +65,7 @@
 .mws-chat-fab:hover {
   background: var(--mws-paddy-deep);
   transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(28, 69, 39, 0.4);
+  box-shadow: 0 14px 30px rgba(22, 163, 74, 0.4);
 }
 .mws-chat-fab:active {
   transform: translateY(0);
@@ -121,6 +130,41 @@
 .mws-grain-deco-12 { top: 38%; left: 25%; transform: rotate(40deg); width: 16px; height: 16px; }
 .mws-grain-deco-13 { top: 95%; left: 60%; transform: rotate(-15deg); width: 20px; height: 20px; }
 
+/* ---------------- Ambient background video ----------------
+   Purely decorative, looping, muted YouTube embed shown behind the chat
+   body. Sits at the same stacking layer as the grain watermark (z-index 0)
+   inside .mws-chat-fullscreen, so the header (opaque) and chat body's own
+   bubbles/cards (z-index 1, mostly opaque) always render above it. A light
+   translucent overlay keeps any visible sliver of video from competing
+   with text. pointer-events: none everywhere so it can never be clicked,
+   dragged, or intercept taps. */
+
+.mws-bg-video-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mws-bg-video-iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 177.78vh; /* 16:9 "cover" trick: scale by viewport height */
+  height: 56.25vw; /* and by viewport width, whichever is larger wins */
+  min-width: 100%;
+  min-height: 100%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border: none;
+}
+.mws-bg-video-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+}
+
 /* ---------------- Header: jute-strip with a stitched seam ---------------- */
 
 .mws-chat-header {
@@ -137,7 +181,7 @@
     var(--mws-paddy-deep) 100%
   );
   color: #fff;
-  border-bottom: 3px dashed rgba(250, 246, 236, 0.35);
+  border-bottom: 3px dashed rgba(255, 255, 255, 0.35);
   flex-shrink: 0;
 }
 
@@ -157,7 +201,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 2px rgba(107, 66, 38, 0.15);
+  box-shadow: inset 0 0 0 2px rgba(20, 20, 20, 0.1);
 }
 .mws-header-badge-icon {
   width: 20px;
@@ -290,16 +334,16 @@
 .mws-bubble-bot {
   background: #fff;
   color: var(--mws-ink);
-  border: 1px solid rgba(107, 66, 38, 0.12);
+  border: 1px solid rgba(20, 20, 20, 0.1);
   border-bottom-left-radius: 4px;
-  box-shadow: 0 2px 8px rgba(28, 42, 30, 0.05);
+  box-shadow: 0 2px 8px rgba(20, 20, 20, 0.05);
 }
 
 .mws-bubble-user {
   background: var(--mws-paddy);
   color: #fff;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 2px 8px rgba(47, 107, 63, 0.25);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
 }
 
 /* Typing indicator */
@@ -363,10 +407,76 @@
   background: var(--mws-paddy);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(47, 107, 63, 0.25);
+  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.25);
 }
 .mws-option-chip:active {
   transform: translateY(0);
+}
+
+/* ---------------- Originality-check card ---------------- */
+
+.mws-originality-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1.5px solid rgba(20, 20, 20, 0.12);
+  border-radius: 16px;
+  padding: 20px 18px 18px;
+  margin: 4px 0 4px 40px;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.1);
+  animation: mws-msg-in 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.mws-originality-media {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--mws-husk-soft);
+}
+.mws-originality-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+  box-sizing: border-box;
+  background: #fff;
+}
+.mws-originality-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--mws-paddy);
+  color: #fff;
+  font-family: var(--mws-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+}
+
+.mws-originality-title {
+  font-family: var(--mws-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--mws-ink);
+}
+
+.mws-originality-desc {
+  font-family: var(--mws-font-body);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--mws-ink);
+  opacity: 0.85;
 }
 
 /* ---------------- Product cards ---------------- */
@@ -384,15 +494,15 @@
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(107, 66, 38, 0.14);
+  border: 1px solid rgba(20, 20, 20, 0.12);
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(28, 42, 30, 0.07);
+  box-shadow: 0 4px 14px rgba(20, 20, 20, 0.07);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .mws-product-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(28, 42, 30, 0.16);
+  box-shadow: 0 14px 28px rgba(20, 20, 20, 0.16);
 }
 
 .mws-product-media {
@@ -429,7 +539,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 68%, rgba(28, 42, 30, 0.16) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 68%, rgba(20, 20, 20, 0.16) 100%);
   pointer-events: none;
 }
 
@@ -447,7 +557,7 @@
   text-transform: uppercase;
   padding: 4px 9px;
   border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(28, 42, 30, 0.15);
+  box-shadow: 0 2px 6px rgba(20, 20, 20, 0.15);
 }
 
 .mws-product-info {
@@ -529,8 +639,8 @@
   background: #fff;
   border-radius: 16px;
   padding: 18px;
-  border: 1px solid rgba(107, 66, 38, 0.14);
-  box-shadow: 0 6px 18px rgba(28, 42, 30, 0.06);
+  border: 1px solid rgba(20, 20, 20, 0.12);
+  box-shadow: 0 6px 18px rgba(20, 20, 20, 0.06);
   animation: mws-msg-in 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
@@ -541,7 +651,7 @@
   text-transform: uppercase;
   color: var(--mws-soil);
   padding-bottom: 8px;
-  border-bottom: 1px dashed rgba(107, 66, 38, 0.25);
+  border-bottom: 1px dashed rgba(20, 20, 20, 0.2);
 }
 
 .mws-form-field {
@@ -556,7 +666,7 @@
 .mws-form-field input,
 .mws-form-field textarea,
 .mws-form-field select {
-  border: 1.5px solid rgba(107, 66, 38, 0.2);
+  border: 1.5px solid rgba(20, 20, 20, 0.16);
   border-radius: 9px;
   padding: 9px 11px;
   font-size: 14px;
@@ -571,12 +681,12 @@
 .mws-form-field select:focus {
   outline: none;
   border-color: var(--mws-paddy);
-  box-shadow: 0 0 0 3px rgba(47, 107, 63, 0.15);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
 }
 
 .mws-submit-btn {
   background: var(--mws-husk);
-  color: var(--mws-ink);
+  color: #fff;
   border: none;
   border-radius: 10px;
   padding: 11px;
@@ -587,7 +697,7 @@
   transition: background 0.15s ease, transform 0.15s ease;
 }
 .mws-submit-btn:hover:not(:disabled) {
-  background: #c6902f;
+  background: #ab8226;
   transform: translateY(-1px);
 }
 .mws-submit-btn:disabled {
@@ -610,7 +720,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border: 1.5px dashed rgba(107, 66, 38, 0.3);
+  border: 1.5px dashed rgba(20, 20, 20, 0.25);
   border-radius: 12px;
   padding: 16px 12px;
   background: var(--mws-cream);
@@ -639,14 +749,14 @@
 .mws-file-dropzone-hint {
   font-size: 11px;
   font-weight: 500;
-  color: rgba(28, 42, 30, 0.55);
+  color: rgba(20, 20, 20, 0.55);
 }
 
 .mws-file-preview {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1.5px solid rgba(107, 66, 38, 0.2);
+  border: 1.5px solid rgba(20, 20, 20, 0.16);
   border-radius: 12px;
   padding: 8px 10px;
   background: var(--mws-cream);
@@ -687,14 +797,14 @@
 .mws-file-preview-size {
   font-size: 11px;
   font-weight: 500;
-  color: rgba(28, 42, 30, 0.55);
+  color: rgba(20, 20, 20, 0.55);
 }
 .mws-file-change-btn {
   position: relative;
   font-size: 11.5px;
   font-weight: 700;
   color: var(--mws-paddy-deep);
-  border: 1px solid rgba(47, 107, 63, 0.35);
+  border: 1px solid rgba(22, 163, 74, 0.35);
   border-radius: 8px;
   padding: 6px 9px;
   cursor: pointer;
@@ -758,7 +868,8 @@
     max-width: 84%;
   }
   .mws-options,
-  .mws-form {
+  .mws-form,
+  .mws-originality-card {
     padding-left: 12px;
     margin-left: 12px;
   }
@@ -784,6 +895,7 @@
   .mws-bubble,
   .mws-options,
   .mws-form,
+  .mws-originality-card,
   .mws-typing span,
   .mws-chat-fab {
     animation: none !important;
@@ -807,7 +919,7 @@
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.1px;
-  box-shadow: 0 10px 26px rgba(28, 69, 39, 0.35);
+  box-shadow: 0 10px 26px rgba(22, 163, 74, 0.35);
   cursor: pointer;
   z-index: 1000;
   transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
@@ -815,7 +927,7 @@
 .mws-chat-fab:hover {
   background: var(--mws-paddy-deep);
   transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(28, 69, 39, 0.4);
+  box-shadow: 0 14px 30px rgba(22, 163, 74, 0.4);
 }
 .mws-chat-fab:active {
   transform: translateY(0);
@@ -841,7 +953,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 2px rgba(107, 66, 38, 0.15);
+  box-shadow: inset 0 0 0 2px rgba(20, 20, 20, 0.1);
   overflow: hidden; /* Ensures image fits cleanly inside the circle */
 }
 
@@ -867,14 +979,14 @@
 /* Pulses the header badge while the AI voice is speaking a reply */
 .mws-header-badge-speaking {
   animation: mws-speaking-pulse 1.1s ease-in-out infinite;
-  box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.55);
+  box-shadow: 0 0 0 3px rgba(201, 154, 46, 0.55);
 }
 @keyframes mws-speaking-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(217, 164, 65, 0.55);
+    box-shadow: 0 0 0 0 rgba(201, 154, 46, 0.55);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(217, 164, 65, 0);
+    box-shadow: 0 0 0 6px rgba(201, 154, 46, 0);
   }
 }
 
@@ -886,12 +998,12 @@
   align-items: center;
   gap: 12px;
   background: #fff;
-  border: 1.5px solid rgba(107, 66, 38, 0.15);
+  border: 1.5px solid rgba(20, 20, 20, 0.13);
   border-radius: 16px;
   padding: 20px 18px 18px;
   margin: 4px 0 12px;
   text-align: center;
-  box-shadow: 0 6px 18px rgba(28, 69, 39, 0.08);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.1);
 }
 
 .mws-step-progress {
@@ -903,7 +1015,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(107, 66, 38, 0.2);
+  background: rgba(20, 20, 20, 0.18);
   transition: background 0.2s ease, transform 0.2s ease;
 }
 .mws-step-dot-done {
@@ -989,8 +1101,8 @@
 .mws-step-btn-ghost {
   background: transparent;
   color: var(--mws-soil);
-  border: 1.5px solid rgba(107, 66, 38, 0.25);
+  border: 1.5px solid rgba(20, 20, 20, 0.2);
 }
 .mws-step-btn-ghost:hover {
-  background: rgba(107, 66, 38, 0.06);
+  background: rgba(20, 20, 20, 0.05);
 }
