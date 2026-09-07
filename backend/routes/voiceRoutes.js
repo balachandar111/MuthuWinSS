@@ -1,15 +1,11 @@
 // ---------------------------------------------------------------------------
-// NOTE: this file did not exist in the source project handed over for this
-// duplication — the frontend (Chatbot.jsx) already called POST /api/voice,
-// but the matching backend route was never supplied. This is a fresh
-// implementation written to match the documented behaviour:
-//   - English -> Amazon Polly, voice "Kajal" (Indian-English, neural)
+// REVERTED: back to Google Translate's free public TTS endpoint for Tamil
+// (Sarvam AI has been removed). No API key is needed for this endpoint.
+//   - English -> Amazon Polly, voice "Kajal" (Indian-English, neural).
 //   - Tamil   -> Google Translate's public TTS endpoint (no API key;
-//                Polly has no Tamil voice at all)
-// You'll need to add real AWS credentials to backend/.env for the English
-// voice to work (see the .env comments). Tamil works with no setup at all.
+//                Polly has no Tamil voice at all).
 //
-// VOLUME: the English voice is now synthesized as SSML with a
+// VOLUME: the English voice is synthesized as SSML with a
 // <prosody volume="..."> boost (see VOICE_VOLUME_DB / synthesizeEnglish
 // below), so it comes back louder at the source. Google Translate's free
 // TTS endpoint used for Tamil has no volume/SSML controls, so a matching
